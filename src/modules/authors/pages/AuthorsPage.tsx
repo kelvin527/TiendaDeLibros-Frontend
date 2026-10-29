@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Spinner } from '../../shared/components/Spinner'
 import { Pagination } from '../../shared/components/Pagination'
+import { Toast } from '../../shared/components/Toast'
+import { useToast } from '../../shared/hooks/useToast'
 import { AuthorForm } from '../components/AuthorForm'
 import { AuthorListItem } from '../components/AuthorListItem'
 import { groupAuthorsByName } from '../groupAuthorsByName'
@@ -22,6 +24,7 @@ export function AuthorsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<{ group: AuthorGroup; values: AuthorFormValues } | null>(null)
+  const { toast, showToast } = useToast()
 
   async function loadAuthors() {
     setLoading(true)
@@ -49,19 +52,30 @@ export function AuthorsPage() {
   }
 
   async function handleSubmit(values: AuthorFormValues) {
-    if (editing) {
-      await updateAuthor(editing.group.representativeId, values)
-    } else {
-      await createAuthor(values)
+    try {
+      if (editing) {
+        await updateAuthor(editing.group.representativeId, values)
+        showToast('Autor actualizado con éxito')
+      } else {
+        await createAuthor(values)
+        showToast('Autor creado con éxito')
+      }
+      setShowForm(false)
+      await loadAuthors()
+    } catch {
+      showToast('No se pudo guardar el autor', 'error')
     }
-    setShowForm(false)
-    await loadAuthors()
   }
 
   async function handleDelete(group: AuthorGroup) {
     if (!confirm(`¿Eliminar a ${group.firstName} ${group.lastName}?`)) return
-    await deleteAuthor(group.representativeId)
-    await loadAuthors()
+    try {
+      await deleteAuthor(group.representativeId)
+      showToast('Autor eliminado con éxito')
+      await loadAuthors()
+    } catch {
+      showToast('No se pudo eliminar el autor', 'error')
+    }
   }
 
   return (
@@ -102,6 +116,8 @@ export function AuthorsPage() {
           <Pagination pageNumber={pageNumber} totalPages={totalPages} onPageChange={setPageNumber} />
         </>
       )}
+
+      <Toast toast={toast} />
     </section>
   )
 }

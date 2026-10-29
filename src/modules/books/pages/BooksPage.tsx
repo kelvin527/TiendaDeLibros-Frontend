@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Spinner } from '../../shared/components/Spinner'
 import { Pagination } from '../../shared/components/Pagination'
+import { Toast } from '../../shared/components/Toast'
+import { useToast } from '../../shared/hooks/useToast'
 import { BookForm } from '../components/BookForm'
 import { BookListItem } from '../components/BookListItem'
 import { createBook, deleteBook, getBooks, updateBook } from '../services/booksService'
@@ -21,6 +23,7 @@ export function BooksPage() {
   const [loading, setLoading] = useState(true)
   const [editingBook, setEditingBook] = useState<Book | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const { toast, showToast } = useToast()
 
   async function loadBooks(page: number) {
     setLoading(true)
@@ -46,19 +49,30 @@ export function BooksPage() {
   }
 
   async function handleSubmit(values: BookFormValues) {
-    if (editingBook) {
-      await updateBook(editingBook.id, values)
-    } else {
-      await createBook(values)
+    try {
+      if (editingBook) {
+        await updateBook(editingBook.id, values)
+        showToast('Libro actualizado con éxito')
+      } else {
+        await createBook(values)
+        showToast('Libro creado con éxito')
+      }
+      setShowForm(false)
+      await loadBooks(pageNumber)
+    } catch {
+      showToast('No se pudo guardar el libro', 'error')
     }
-    setShowForm(false)
-    await loadBooks(pageNumber)
   }
 
   async function handleDelete(book: Book) {
     if (!confirm(`¿Eliminar "${book.title}"?`)) return
-    await deleteBook(book.id)
-    await loadBooks(pageNumber)
+    try {
+      await deleteBook(book.id)
+      showToast('Libro eliminado con éxito')
+      await loadBooks(pageNumber)
+    } catch {
+      showToast('No se pudo eliminar el libro', 'error')
+    }
   }
 
   return (
@@ -109,6 +123,8 @@ export function BooksPage() {
           <Pagination pageNumber={pageNumber} totalPages={totalPages} onPageChange={loadBooks} />
         </>
       )}
+
+      <Toast toast={toast} />
     </section>
   )
 }
